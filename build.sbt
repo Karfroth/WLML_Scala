@@ -4,9 +4,11 @@ lazy val root = (project in file(".")).
     version := "0.0.1",
     scalaVersion := "2.10.4",
     libraryDependencies  ++= Seq(
-      "org.scalanlp" %% "breeze" % "0.12"
+      "org.scalanlp" %% "breeze" % "0.12",
+      "org.scalanlp" %% "breeze-natives" % "0.12"
     ),
     resolvers ++= Seq(
       "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/"
-    )
+    ),
+    javaOptions += "-Dcom.github.fommil.netlib.BLAS=com.github.fommil.netlib.NativeRefBLAS"
   )
