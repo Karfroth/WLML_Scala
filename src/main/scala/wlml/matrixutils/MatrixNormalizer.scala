@@ -1,4 +1,5 @@
-package wlml
+package wlml.matrixutils
+
 import breeze.linalg._
 
 trait MatrixNormalizer {
