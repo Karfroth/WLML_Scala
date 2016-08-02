@@ -1,12 +1,15 @@
 package wlml.linear
 
 import breeze.linalg._
+import breeze.linalg.qr.QR
 
 object Optimizer {
 
   implicit object SparseType
   implicit object DenseType
-
+  
+  // Start Gradient Descent for Sparse Types
+  
   def gradientdescent(weights: SparseVector[Double], features: CSCMatrix[Double],
     outputs: SparseVector[Double], params: Regressor.Parameters,
     iter: Int)(implicit s: SparseType.type): SparseVector[Double] = {
@@ -41,6 +44,10 @@ object Optimizer {
 
   }
 
+  // End of Gradient Descent for Sparse Types
+  
+  // Start of Gradient Descent for Dense Types
+  
   def gradientdescent(weights: DenseVector[Double], features: DenseMatrix[Double],
     outputs: DenseVector[Double], params: Regressor.Parameters,
     iter: Int)(implicit d: DenseType.type): DenseVector[Double] = {
@@ -73,6 +80,18 @@ object Optimizer {
       gradientdescent(weights, features, outputs, params, iter + 1)(DenseType)
     } else weights
 
+  }
+  
+  // End of Gradient Descent for Dense Types
+  
+  // Start of QR Decomposition for Dense Types
+  
+  def qrdecomposition(features: DenseMatrix[Double], outputs: DenseVector[Double], 
+      params: Regressor.Parameters) : DenseVector[Double] = {
+    
+    val QR(qValue, rValue) = qr.reduced(features)
+    inv(rValue) * (qValue.t * outputs)
+    
   }
 
 }
