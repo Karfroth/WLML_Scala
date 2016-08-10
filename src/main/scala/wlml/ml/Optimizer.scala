@@ -1,4 +1,4 @@
-package wlml.linear
+package wlml.ml
 
 import breeze.linalg._
 import breeze.linalg.qr.QR
@@ -8,14 +8,15 @@ trait Optimizer extends wlml.ml.Opts {
   // Start Gradient Descent for Sparse Types
 
   def gradientdescent(weights: SparseVector[Double], features: CSCMatrix[Double],
-    outputs: SparseVector[Double], params: Parameters, iter: Int): SparseVector[Double] = {
+    outputs: SparseVector[Double], params: Parameters, iter: Int)
+  (predFunc: (CSCMatrix[Double], SparseVector[Double]) => SparseVector[Double]): SparseVector[Double] = {
 
     def regulizer(m: Double, weights: SparseVector[Double],
       penalty: Double, is_l2: Boolean): Double = {
       val target_weights = weights(1 to (weights.length - 1))
       (penalty / (1.0 * m)) * (target_weights.t * target_weights)
     }
-
+    
     def checkNecessity(ps: Parameters, errorNorm: Double, iter: Int): Boolean = {
       if ((((ps.earlierErrors - errorNorm) < ps.tolerance) && (iter != 0)) || (iter >= ps.maxiter)) false
       else true
@@ -23,7 +24,7 @@ trait Optimizer extends wlml.ml.Opts {
 
     // Calculate cost
     val m: Double = features.rows
-    val errors: SparseVector[Double] = (features * weights) - outputs
+    val errors: SparseVector[Double] = predFunc(features, weights) - outputs
     val regul_term: Double = regulizer(m, weights, params.l2_penalty, true)
     val cost: Double = (1.0 / m) * ((errors.t * errors) + regul_term)
     // theta : Regularizer term
@@ -34,7 +35,7 @@ trait Optimizer extends wlml.ml.Opts {
 
     if (checkNecessity(params, norm(errors), iter)) {
       val paramsNext = params.copy(earlierErrors = norm(errors))
-      gradientdescent(weights, features, outputs, paramsNext, iter + 1)
+      gradientdescent(weights, features, outputs, paramsNext, iter + 1)(predFunc)
     } else weights
 
   }
