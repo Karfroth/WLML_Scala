@@ -9,16 +9,18 @@ trait Optimizer extends wlml.ml.Opts {
 
   def gradientdescent(weights: SparseVector[Double], features: CSCMatrix[Double],
     outputs: SparseVector[Double], params: Parameters, iter: Int)
-  (predFunc: (CSCMatrix[Double], SparseVector[Double]) => SparseVector[Double]): SparseVector[Double] = {
+  (predFunc: (CSCMatrix[Double], SparseVector[Double]) => SparseVector[Double])
+  (check: (CSCMatrix[Double], SparseVector[Double], SparseVector[Double], Double, Double)=> (Double, Double)): SparseVector[Double] = {
 
     def regulizer(m: Double, weights: SparseVector[Double],
       penalty: Double, is_l2: Boolean): Double = {
       val target_weights = weights(1 to (weights.length - 1))
       (penalty / (1.0 * m)) * (target_weights.t * target_weights)
     }
-    
+
     def checkNecessity(ps: Parameters, errorNorm: Double, iter: Int): Boolean = {
-      if ((((ps.earlierErrors - errorNorm) < ps.tolerance) && (iter != 0)) || (iter >= ps.maxiter)) false
+      //if ((((ps.earlierErrors - errorNorm) < ps.tolerance) && (iter != 0)) || (iter >= ps.maxiter)) false
+      if (iter >= ps.maxiter) false
       else true
     }
 
@@ -30,12 +32,16 @@ trait Optimizer extends wlml.ml.Opts {
     // theta : Regularizer term
     val theta: SparseVector[Double] = weights.copy
     theta(0) = 0.0
-    val gradient: SparseVector[Double] = ((features.t * errors) + (theta * params.l2_penalty)) * (m / 2.0)
+    val gradient: SparseVector[Double] = (features.t * errors) + ((theta * params.l2_penalty) * (m / 2.0))
     weights :-= gradient * params.stepSize
+    
+    val test = check(features, outputs, weights, params.l2_penalty, params.earlierErrors)
+    
+    println(iter, test._1, test._2)
 
     if (checkNecessity(params, norm(errors), iter)) {
-      val paramsNext = params.copy(earlierErrors = norm(errors))
-      gradientdescent(weights, features, outputs, paramsNext, iter + 1)(predFunc)
+      val paramsNext = params.copy(earlierErrors = test._1)
+      gradientdescent(weights, features, outputs, paramsNext, iter + 1)(predFunc)(check)
     } else weights
 
   }
