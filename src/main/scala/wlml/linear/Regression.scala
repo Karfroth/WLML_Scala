@@ -11,28 +11,39 @@ object Regressor {
 
     val parameters = Parameters(tolerance, maxiter, stepSize, l1_penalty, l2_penalty, Double.PositiveInfinity)
 
-    private def coeeDotFeat(feat: CSCMatrix[Double], coee: SparseVector[Double]): SparseVector[Double] = {
-      feat * coee
-    }
-    private def distanceChecker(feat: CSCMatrix[Double], out: SparseVector[Double],
-      wei: SparseVector[Double], l2: Double, earlier: Double): (Double, Double) = {
-      val error = (norm((feat * wei) - out) / norm(out))
-      val check = earlier - error
-      (error, check)
+    private def costGrad(feat: CSCMatrix[Double], out: SparseVector[Double],
+      wei: SparseVector[Double], pa: Parameters): (Double, SparseVector[Double]) = {
+      val nextWeights = wei.copy
+      val m = feat.rows.toDouble
+      val theta: SparseVector[Double] = wei.copy
+      theta(0) = 0.0
+      val regul_term: Double = (pa.l2_penalty / (1.0 * m)) * (theta.t * theta)
+      val errors: SparseVector[Double] = (feat * wei) - out
+      val cost: Double = (1.0 / m) * ((errors.t * errors) + regul_term)
+      val gradient = (feat.t * errors) + ((theta * pa.l2_penalty) * (m / 2.0))
+      
+      (cost, gradient)
     }
 
     def buildSparseModel(featureMatrix: CSCMatrix[Double], outputs: SparseVector[Double],
       parameters: Parameters): SparseVector[Double] = {
       val (featMatrix, normalizerRanges, normalizerMeans) = featureNormalizer(featureMatrix)
       val initialWeights = SparseVector(Array.fill(featMatrix.cols)(1.0))
-      gradientdescent(initialWeights, featMatrix, outputs, parameters, 0)(coeeDotFeat)(distanceChecker)
+      gdSolver(initialWeights, featMatrix, outputs, parameters, 0)(costGrad)
     }
 
     def buildQRModel(featureMatrix: DenseMatrix[Double], outputs: DenseVector[Double],
       parameters: Parameters): DenseVector[Double] = {
       val (featMatrix, normalizerRanges, normalizerMeans) = featureNormalizer(featureMatrix)
       val initialWeights = DenseVector(Array.fill(featMatrix.cols)(1.0))
-      qrdecomposition(featMatrix, outputs, parameters)
+      qrSolver(featMatrix, outputs, parameters)
+    }
+    
+    def buildLBFGSModel(featureMatrix: CSCMatrix[Double], outputs: SparseVector[Double],
+      parameters: Parameters): SparseVector[Double] = {
+      val (featMatrix, normalizerRanges, normalizerMeans) = featureNormalizer(featureMatrix)
+      val initialWeights = SparseVector(Array.fill(featMatrix.cols)(1.0))
+      lbfgsSolver(initialWeights, featMatrix, outputs, parameters)(costGrad)
     }
 
   }

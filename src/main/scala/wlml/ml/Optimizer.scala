@@ -2,46 +2,38 @@ package wlml.ml
 
 import breeze.linalg._
 import breeze.linalg.qr.QR
+import breeze.optimize._
 
 trait Optimizer extends wlml.ml.Opts {
 
   // Start Gradient Descent for Sparse Types
 
-  def gradientdescent(weights: SparseVector[Double], features: CSCMatrix[Double],
+  def gdSolver(weights: SparseVector[Double], features: CSCMatrix[Double],
     outputs: SparseVector[Double], params: Parameters, iter: Int)
-  (predFunc: (CSCMatrix[Double], SparseVector[Double]) => SparseVector[Double])
-  (check: (CSCMatrix[Double], SparseVector[Double], SparseVector[Double], Double, Double)=> (Double, Double)): SparseVector[Double] = {
+  (costFunc: (CSCMatrix[Double], SparseVector[Double],SparseVector[Double], Parameters) => (Double,SparseVector[Double])): SparseVector[Double] = {
 
-    def regulizer(m: Double, weights: SparseVector[Double],
-      penalty: Double, is_l2: Boolean): Double = {
-      val target_weights = weights(1 to (weights.length - 1))
-      (penalty / (1.0 * m)) * (target_weights.t * target_weights)
-    }
-
-    def checkNecessity(ps: Parameters, errorNorm: Double, iter: Int): Boolean = {
-      //if ((((ps.earlierErrors - errorNorm) < ps.tolerance) && (iter != 0)) || (iter >= ps.maxiter)) false
-      if (iter >= ps.maxiter) false
+    def checkNecessity(chVal: Double, iter: Int, ps: Parameters): Boolean = {
+      if (((chVal < ps.tolerance) && (iter != 0)) || (iter >= ps.maxiter)) false
       else true
     }
-
+    
+    def descentAmountChecker(cost: Double, pa: Parameters): Double = {
+      (pa.earlierCost - cost) / pa.earlierCost
+    }
+    
     // Calculate cost
-    val m: Double = features.rows
-    val errors: SparseVector[Double] = predFunc(features, weights) - outputs
-    val regul_term: Double = regulizer(m, weights, params.l2_penalty, true)
-    val cost: Double = (1.0 / m) * ((errors.t * errors) + regul_term)
-    // theta : Regularizer term
-    val theta: SparseVector[Double] = weights.copy
-    theta(0) = 0.0
-    val gradient: SparseVector[Double] = (features.t * errors) + ((theta * params.l2_penalty) * (m / 2.0))
-    weights :-= gradient * params.stepSize
-    
-    val test = check(features, outputs, weights, params.l2_penalty, params.earlierErrors)
-    
-    println(iter, test._1, test._2)
 
-    if (checkNecessity(params, norm(errors), iter)) {
-      val paramsNext = params.copy(earlierErrors = test._1)
-      gradientdescent(weights, features, outputs, paramsNext, iter + 1)(predFunc)(check)
+    val (cost:Double, gradient:SparseVector[Double]) = costFunc(features, outputs, weights, params)
+    
+    val checkValue = descentAmountChecker(cost, params)
+    val nextWeights = weights.copy
+    nextWeights :-= gradient * params.stepSize
+    
+    println(iter, cost, checkValue)
+    
+    if (checkNecessity(checkValue, iter, params)) {
+      val paramsNext = params.copy(earlierCost = cost)
+      gdSolver(nextWeights, features, outputs, paramsNext, iter + 1)(costFunc)
     } else weights
 
   }
@@ -50,7 +42,7 @@ trait Optimizer extends wlml.ml.Opts {
 
   // Start of QR Decomposition for Dense Types
 
-  def qrdecomposition(features: DenseMatrix[Double], outputs: DenseVector[Double],
+  def qrSolver(features: DenseMatrix[Double], outputs: DenseVector[Double],
     params: Parameters): DenseVector[Double] = {
 
     val n: Int = features.cols
@@ -63,4 +55,17 @@ trait Optimizer extends wlml.ml.Opts {
 
   }
 
+  def lbfgsSolver(initialWeights: SparseVector[Double], features: CSCMatrix[Double], outputs: SparseVector[Double], params: Parameters)
+  (costFunc: (CSCMatrix[Double], SparseVector[Double],SparseVector[Double], Parameters) => (Double,SparseVector[Double])) = {
+    val obj = new DiffFunction[SparseVector[Double]] {
+      override def calculate(weights: SparseVector[Double]): (Double, SparseVector[Double]) = {
+        
+        costFunc(features, outputs, weights, params)
+
+      }
+    }
+    //val initWeights = SparseVector(Array.fill(features.cols)(1.0))
+    new LBFGS[SparseVector[Double]](tolerance = params.tolerance).minimize(obj, initialWeights)
+
+  }
 }

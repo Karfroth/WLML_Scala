@@ -4,7 +4,8 @@ lazy val root = (project in file(".")).
     version := "0.0.1",
     scalaVersion := "2.11.8",
     libraryDependencies  ++= Seq(
-      "org.scalanlp" %% "breeze" % "0.12"
+      "org.scalanlp" %% "breeze" % "0.12",
+      "org.slf4j" % "slf4j-simple" % "1.7.6"
       //"org.scalanlp" %% "breeze-natives" % "0.12"
     ),
     resolvers ++= Seq(
