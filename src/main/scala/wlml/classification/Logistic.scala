@@ -11,20 +11,6 @@ object Logistic {
 
     val parameters = Parameters(tolerance, maxiter, stepSize, l1_penalty, l2_penalty, Double.PositiveInfinity)
 
-    private def sigmoid(feat: CSCMatrix[Double], coee: SparseVector[Double]): SparseVector[Double] = {
-      val z = (feat * coee)
-      z.map(x => if (x > 0) (1.0 / (1.0 + Math.exp(-x))) else (Math.exp(x) / (1.0 + Math.exp(x))))
-    }
-
-    def loglikelihoodTest(feat: CSCMatrix[Double], out: SparseVector[Double],
-      wei: SparseVector[Double], l2: Double, earlier: Double): (Double, Double) = {
-      val scores = feat * wei
-      val theta = wei.copy
-      theta(0) = 0.0
-      val lp = sum((out - 1.0) :* scores - breeze.numerics.log(breeze.numerics.exp(-scores) + 1.0)) - (l2 * (theta.t * theta))
-      (lp, (earlier - lp) / earlier)
-    }
-
     private def costGrad(feat: CSCMatrix[Double], out: SparseVector[Double],
       wei: SparseVector[Double], pa: Parameters): (Double, SparseVector[Double]) = {
 
@@ -36,13 +22,11 @@ object Logistic {
         w.map(x => Math.log(x))
       }
       
-      val nextWeights = wei.copy
-
+      val m = feat.rows.toDouble
       val theta = wei.copy
       theta(0) = 0.0
 
       val hx = sigmoid(feat * wei)
-      val m = feat.rows.toDouble
       val j0 = -sum((logsig(hx) :* out) + (logsig(-hx + 1.0) :* (-out + 1.0))) / m
       val cost = j0 + (((wei.t * wei) * 0.5 * pa.l2_penalty) / m)
       val gradient = ((feat.t * (hx - out)) + (theta * pa.l2_penalty)) / m
