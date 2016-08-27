@@ -47,7 +47,7 @@ trait Optimizer extends wlml.ml.Opts {
 
     val n: Int = features.cols
 
-    val feats = DenseMatrix.vertcat(features, (DenseMatrix.eye[Double](n) * params.l2_penalty))
+    val feats = DenseMatrix.vertcat(features, DenseMatrix.eye[Double](n) * params.l2_penalty)
     val outs = DenseVector.vertcat(outputs, DenseVector.zeros[Double](n))
 
     val QR(qValue, rValue) = qr.reduced(feats)

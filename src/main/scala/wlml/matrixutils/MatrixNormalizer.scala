@@ -7,7 +7,9 @@ trait MatrixNormalizer {
   implicit object SparseType
   implicit object DenseType
 
-  def featureNormalizer(matrix: CSCMatrix[Double])(implicit s: SparseType.type): (CSCMatrix[Double], List[Double], List[Double]) = {
+  case class NormalizeParam(var ranges: SparseVector[Double], var means: SparseVector[Double])
+
+  def featureNormalizer(matrix: CSCMatrix[Double])(implicit s: SparseType.type): (CSCMatrix[Double], SparseVector[Double], SparseVector[Double]) = {
     val normalizedMatrix = matrix.copy
     val nrows = normalizedMatrix.rows
     val ncols = normalizedMatrix.cols
@@ -25,9 +27,21 @@ trait MatrixNormalizer {
       normalizedMatrix(j, i) = (normalizedMatrix(j, i) - normalizeMeans(i)) / normalizeRange(i)
     }
 
-    (normalizedMatrix, normalizeRange.toList, normalizeMeans.toList)
+    (normalizedMatrix, SparseVector(normalizeRange:_*), SparseVector(normalizeMeans:_*))
   }
 
+  def predictionNormalizer(normalizer: NormalizeParam, targetFeatures: CSCMatrix[Double]): CSCMatrix[Double] = {
+    val normalizedMatrix = targetFeatures.copy
+    val nrows = normalizedMatrix.rows
+    val ncols = normalizedMatrix.cols
+
+    for (i <- 0 until ncols; j <- 0 until nrows) {
+      normalizedMatrix(j, i) = (normalizedMatrix(j, i) - normalizer.means(i)) / normalizer.ranges(i)
+    }
+
+    normalizedMatrix
+  }
+  /*
   def featureNormalizer(matrix: DenseMatrix[Double])(implicit d: DenseType.type): (DenseMatrix[Double], List[Double], List[Double]) = {
     val normalizedMatrix = matrix.copy
     val nrows = normalizedMatrix.rows
@@ -48,5 +62,8 @@ trait MatrixNormalizer {
 
     (normalizedMatrix, normalizeRange.toList, normalizeMeans.toList)
   }
+  */
+
+
 
 }
