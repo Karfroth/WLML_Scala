@@ -1,6 +1,8 @@
 package wlml.classification
 
 import breeze.linalg._
+import breeze.math.Semiring
+import scala.reflect.ClassTag
 
 /**
   * Created by Woosang Lee
@@ -56,9 +58,8 @@ trait DecisionTree {
 
 
   //def findBestFeature(features: Matrix[_], outputs: Vector[_], featuresSet: Set[Idx]): SplittingParam
-  implicit def intToDoubleMatrix(mat: CSCMatrix[Int]): CSCMatrix[Double] = mat.map( x => x * 1.0)
 
-  def buildTree(features: Matrix[Double], outputs: Vector[Int], depth: Int = 0, maxDepth: Int, featuresIdxSet: Set[Idx]): DTree = {
+  def buildTree[F:Semiring:ClassTag](features: Matrix[F], outputs: Vector[Int], depth: Int = 0, maxDepth: Int, featuresIdxSet: Set[Idx]): DTree = {
 
     if (depth >= maxDepth || featuresIdxSet.isEmpty) {
       Leaf(buildLeaf(outputs))
@@ -66,12 +67,12 @@ trait DecisionTree {
     else {
       //Find best feature index and Assign row index to split
       val splittingFeatureIdx: SplittingParam = findBestFeature(features, outputs, featuresIdxSet)
-      val leftIdx: Seq[Idx] = (0 until features.rows).filter(features(_, splittingFeatureIdx.index) == 0)
-      val rightIdx: Seq[Idx] = (0 until features.rows).filter(features(_, splittingFeatureIdx.index) == 1)
+      val leftIdx: IndexedSeq[Idx] = (0 until features.rows).filter(features(_, splittingFeatureIdx.index) == 0)
+      val rightIdx: IndexedSeq[Idx] = (0 until features.rows).filter(features(_, splittingFeatureIdx.index) == 1)
 
       // Spliting Features
-      val leftF: Matrix[Double] = features(leftIdx, 0 until features.cols)
-      val rightF: Matrix[Double] = features(rightIdx, 0 until features.cols)
+      val leftF: Matrix[F] = features(leftIdx, 0 until features.cols)
+      val rightF: Matrix[F] = features(rightIdx, 0 until features.cols)
 
       // Spliting Outputs
       val leftO: Vector[Int] = outputs(leftIdx)
